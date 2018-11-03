@@ -8,47 +8,34 @@ import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
 import android.text.TextPaint;
 import android.util.AttributeSet;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
 
-public class PersonView extends View {
+public class PersonView extends RelativeLayout {
+
     String name, status, latitude, longitude;
+    TextView nameLabel, statusLabel, locationLabel;
 
     public PersonView(Context context, Person person) {
         super(context);
-        name = person.nickname;
-        status = person.status;
-        latitude = Double.toString(person.latitude);
-        longitude = Double.toString(person.longitude);
-        init(null, 0);
+        init(person);
     }
 
-    public PersonView(Context context, AttributeSet attrs, Person person) {
-        super(context, attrs);
-        name = person.nickname;
-        status = person.status;
-        latitude = Double.toString(person.latitude);
-        longitude = Double.toString(person.longitude);
-        init(attrs, 0);
-    }
-
-    public PersonView(Context context, AttributeSet attrs, int defStyle, Person person) {
-        super(context, attrs, defStyle);
-        name = person.nickname;
-        status = person.status;
-        latitude = Double.toString(person.latitude);
-        longitude = Double.toString(person.longitude);
-        init(attrs, defStyle);
-    }
-
-    private void init(AttributeSet attrs, int defStyle) {
+    private void init(Person person) {
         // Load attributes
-
-    }
-
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-
+        LayoutInflater inflater = (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        inflater.inflate(R.layout.view_person, this);
+        name = person.nickname;
+        status = person.status;
+        latitude = Double.toString(person.latitude);
+        longitude = Double.toString(person.longitude);
+        nameLabel = findViewById(R.id.name);
+        statusLabel = findViewById(R.id.status);
+        locationLabel = findViewById(R.id.location);
+        nameLabel.setText(name);
+        statusLabel.setText(status);
+        locationLabel.setText(latitude + "\n" + longitude);
     }
 }

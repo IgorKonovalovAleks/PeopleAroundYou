@@ -1,13 +1,19 @@
 package com.itsamsung.stdigor.peoplearoundyou;
 
 import android.content.Context;
+import android.graphics.Point;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Display;
+import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -23,7 +29,8 @@ public class People extends AppCompatActivity {
     Person person;
     LinearLayout wall;
     TextView progress;
-    boolean ready;
+    Handler handler;
+    Button load;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,12 +38,29 @@ public class People extends AppCompatActivity {
         setContentView(R.layout.activity_people);
         person = new Gson().fromJson(getIntent().getStringExtra("person"), Person.class);
         wall = findViewById(R.id.wall);
+        load = findViewById(R.id.button2);
         progress = findViewById(R.id.progress);
         progress.setText("Loading...");
-        BackGround myLocationListener = new BackGround();
-        ready = false;
-        myLocationListener.start();
-        while(!ready){}
+        BackGround backGround = new BackGround();
+        handler = new Handler() {
+            @Override
+            public void handleMessage(Message msg){
+                super.handleMessage(msg);
+                progress.setText("Done!");
+            }
+        };
+        load.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                wall.removeAllViews();
+                initPersonList();
+            }
+        });
+        backGround.start();
+    }
+
+    private void initPersonList(){
+        Log.d("DEBUG", "PERSON LIST");
         Person pers;
         PersonView make;
         for(int i = 0; i < people.size(); i++){
@@ -44,6 +68,9 @@ public class People extends AppCompatActivity {
             Log.d("TAG_FROM_PEOPLE", new Gson().toJson(pers));
             make = new PersonView(this, pers);
             make.setId(i);
+            Point size = new Point();
+            getWindowManager().getDefaultDisplay().getSize(size);
+            make.setLayoutParams(new LinearLayout.LayoutParams((int)(size.x * 0.95), 150));
             wall.addView(make);
         }
         progress.setText("Done!");
@@ -56,7 +83,7 @@ public class People extends AppCompatActivity {
         public BackGround(){
             manager = (LocationManager) getSystemService(LOCATION_SERVICE);
             try {
-                manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 0, listener);
+                manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, listener);
             } catch (SecurityException e) {
                 e.printStackTrace();
             }
@@ -78,23 +105,24 @@ public class People extends AppCompatActivity {
                     //people = response.body();
                     people = new ArrayList<>();
                     for (int i = 0; i < 3; i++){
-                        people.add(generate());
+                        people.add(generate(i));
                     }
-                    Log.d("TAG", Integer.toString(people.size()));
+                    people.add(person);
+                    Log.d("TAG", new Gson().toJson(people));
+                    handler.sendEmptyMessage(1);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                ready = true;
             }
         }
 
         //returns random person
-        private Person generate(){
+        private Person generate(int n){
             Person person = new Person();
             person.latitude = 56 + Math.random();
             person.longitude = 44 + Math.random();
-            person.nickname = "Some nickname " + Double.toString(person.latitude);
-            person.status = "Vsyo slozhno " + Double.toString(person.longitude);
+            person.nickname = "Nickname" + Integer.toString(n);
+            person.status = "Vsyo slozhno " + Integer.toString(n);
             return person;
         }
 
@@ -114,7 +142,7 @@ public class People extends AppCompatActivity {
             public void onProviderEnabled(String provider) {
                 manager = (LocationManager) getSystemService(LOCATION_SERVICE);
                 try {
-                    manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 0, listener);
+                    manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5, listener);
                 } catch (SecurityException e) {
                     e.printStackTrace();
                 }

@@ -19,8 +19,11 @@ import android.widget.TextView;
 
 import com.google.gson.Gson;
 import java.util.ArrayList;
+import java.util.Random;
+
 import retrofit.Call;
 import retrofit.GsonConverterFactory;
+import retrofit.Response;
 import retrofit.Retrofit;
 
 public class People extends AppCompatActivity {
@@ -95,20 +98,24 @@ public class People extends AppCompatActivity {
                 try {
                     Thread.sleep(5000);
                     Retrofit retrofit = new Retrofit.Builder()
-                            .baseUrl("https://peoplearoundyou.herokuapp.com")                       //Don't know my project's URL on heroku yet
+                            .baseUrl("https://frozen-badlands-67545.herokuapp.com")
                             .addConverterFactory(GsonConverterFactory.create())
                             .build();
                     RequestSample requestSample = retrofit.create(RequestSample.class);
-                    //Maybe not ArrayList
+                    Person rqu = generate(new Random().nextInt(100));
+                    Log.d("REQUEST", new Gson().toJson(rqu));
                     Call<ArrayList<Person>> call = requestSample.lookForPeople(person);
-                    //Response<ArrayList<Person>> response = call.execute();
-                    //people = response.body();
+                    Response<ArrayList<Person>> response = call.execute();
+                    people = new ArrayList<>();
+                    people = response.body();
+                    /*
                     people = new ArrayList<>();
                     for (int i = 0; i < 3; i++){
                         people.add(generate(i));
                     }
                     people.add(person);
-                    Log.d("TAG", new Gson().toJson(people));
+                    */
+                    Log.d("RESPONSE", new Gson().toJson(people));
                     handler.sendEmptyMessage(1);
                 } catch (Exception e) {
                     e.printStackTrace();

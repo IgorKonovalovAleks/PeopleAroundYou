@@ -14,20 +14,20 @@ import java.util.Scanner;
 
 public final class JSONBaseModule {
 
-    private String file;
+    private File file;
     private Context context;
     private Gson gson;
 
     public JSONBaseModule(String name, Context ctx){
         this.context = ctx;
-        this.file = context.getFilesDir().toString() + "/" + name;
+        this.file = new File(context.getFilesDir().toString(), name);
         gson = new Gson();
     }
 
 
     public void saveData(Person person) {
         String data = gson.toJson(person);
-        Log.d("TAG", data);
+        Log.d("TAG_WRITE", data);
         try {
             PrintWriter writer = new PrintWriter(new FileWriter(file));
             writer.print(data);
@@ -39,13 +39,13 @@ public final class JSONBaseModule {
 
     public Person getData() {
         try {
-            Scanner scanner = new Scanner(new File(file));
+            Scanner scanner = new Scanner(file);
             String str = "";
             Person person;
             while(scanner.hasNext()){
                 str += scanner.next();
             }
-            Log.d("TAG", str);
+            Log.d("TAG_READ", str);
             person = gson.fromJson(str, Person.class);
             return person;
         } catch (IOException e) {

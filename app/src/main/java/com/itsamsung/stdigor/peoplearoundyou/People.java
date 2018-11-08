@@ -43,12 +43,13 @@ public class People extends AppCompatActivity {
         wall = findViewById(R.id.wall);
         load = findViewById(R.id.button2);
         progress = findViewById(R.id.progress);
-        progress.setText("Loading...");
         BackGround backGround = new BackGround();
+        backGround.start();
         handler = new Handler() {
             @Override
             public void handleMessage(Message msg){
                 super.handleMessage(msg);
+                initPersonList();
                 progress.setText("Done!");
             }
         };
@@ -56,10 +57,10 @@ public class People extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 wall.removeAllViews();
-                initPersonList();
+                new LoadPeople().execute();
+                progress.setText("Loading...");
             }
         });
-        backGround.start();
     }
 
     private void initPersonList(){
@@ -79,6 +80,36 @@ public class People extends AppCompatActivity {
         progress.setText("Done!");
     }
 
+    class LoadPeople extends AsyncTask<Void, Void, ArrayList<Person>>{
+
+        @Override
+        protected ArrayList<Person> doInBackground(Void... voids) {
+            Retrofit retrofit = new Retrofit.Builder()
+                    .baseUrl("https://frozen-badlands-67545.herokuapp.com")
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build();
+            RequestSample requestSample = retrofit.create(RequestSample.class);
+            try {
+                Log.d("REQUEST", new Gson().toJson(person));
+                Call<ArrayList<Person>> call = requestSample.lookForPeople(person);
+                Response<ArrayList<Person>> response = call.execute();
+                return response.body();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        public void onPostExecute(ArrayList<Person> personList){
+            if(personList != null) {
+                people = personList;
+                handler.sendEmptyMessage(1);
+            } else {
+                progress.setText("Error");
+            }
+        }
+    }
+
     class BackGround extends Thread {
 
         private LocationManager manager;
@@ -94,43 +125,6 @@ public class People extends AppCompatActivity {
 
         @Override
         public void run(){
-            while(true) {
-                try {
-                    Thread.sleep(5000);
-                    Retrofit retrofit = new Retrofit.Builder()
-                            .baseUrl("https://frozen-badlands-67545.herokuapp.com")
-                            .addConverterFactory(GsonConverterFactory.create())
-                            .build();
-                    RequestSample requestSample = retrofit.create(RequestSample.class);
-                    Person rqu = generate(new Random().nextInt(100));
-                    Log.d("REQUEST", new Gson().toJson(rqu));
-                    Call<ArrayList<Person>> call = requestSample.lookForPeople(person);
-                    Response<ArrayList<Person>> response = call.execute();
-                    people = new ArrayList<>();
-                    people = response.body();
-                    /*
-                    people = new ArrayList<>();
-                    for (int i = 0; i < 3; i++){
-                        people.add(generate(i));
-                    }
-                    people.add(person);
-                    */
-                    Log.d("RESPONSE", new Gson().toJson(people));
-                    handler.sendEmptyMessage(1);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        //returns random person
-        private Person generate(int n){
-            Person person = new Person();
-            person.latitude = 56 + Math.random();
-            person.longitude = 44 + Math.random();
-            person.nickname = "Nickname" + Integer.toString(n);
-            person.status = "Vsyo slozhno " + Integer.toString(n);
-            return person;
         }
 
         private LocationListener listener = new LocationListener() {
@@ -147,6 +141,7 @@ public class People extends AppCompatActivity {
 
             @Override
             public void onProviderEnabled(String provider) {
+                progress.setText("GPS provider enabled");
                 manager = (LocationManager) getSystemService(LOCATION_SERVICE);
                 try {
                     manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5, listener);
@@ -157,7 +152,7 @@ public class People extends AppCompatActivity {
 
             @Override
             public void onProviderDisabled(String provider) {
-
+                progress.setText("GPS provider is unable");
             }
         };
     }

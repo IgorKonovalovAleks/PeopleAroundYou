@@ -25,7 +25,6 @@ public class MainActivity extends AppCompatActivity {
 
     Person person;
     Button button;
-    TextView text;
     Context context;
     private static final String TAG = "TAG";
 
@@ -34,20 +33,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         button = findViewById(R.id.button);
-        text = findViewById(R.id.textView);
         context = this.getApplicationContext();
 
-        //Just an example of user's settings
         person = new Person();
-        Log.i("Normal", "first");
 
-        person.nickname = "root";
-        person.longitude = 44.23423;
-        person.latitude = 56.23421;
-        person.status = "Vsyo slozhno";
-
-        new LoadPerson("write").execute();
-        Log.i("Normal", "executing");
+        new LoadPerson("read").execute();
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -71,14 +61,12 @@ public class MainActivity extends AppCompatActivity {
         protected Person doInBackground(Void... voids) {
             JSONBaseModule jbm = new JSONBaseModule("User.txt", context);
             Person per = new Person();
-            Log.d(TAG, person.status);
             if (mode == "write"){
                 jbm.saveData(person);
-                Log.d(TAG, person.status);
             } else if (mode == "read"){
                 per = jbm.getData();
-                Log.d(TAG, person.status);
             }
+            Log.d(TAG, new Gson().toJson(per));
             return per;
         }
 
@@ -90,7 +78,6 @@ public class MainActivity extends AppCompatActivity {
                 Log.i("Normal", Double.toString(person.latitude));
             } else {
                 person = result;
-                text.setText(person.status + person.nickname + person.latitude + person.longitude);
                 Log.i("Normal", Double.toString(person.latitude));
             }
         }

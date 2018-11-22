@@ -1,56 +1,91 @@
 package com.itsamsung.stdigor.peoplearoundyou;
 
 import android.content.Context;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.google.gson.Gson;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.lang.reflect.Type;
 import java.util.Scanner;
 
-public final class JSONBaseModule {
+public final class JSONBaseModule<T> {
 
-    private File file;
-    private Context context;
-    private Gson gson;
+    String file;
+    Type type;
+    Context context;
 
-    public JSONBaseModule(String name, Context ctx){
-        this.context = ctx;
-        this.file = new File(context.getFilesDir().toString(), name);
-        gson = new Gson();
+    public JSONBaseModule(String name, Type t, Context ctx){
+        file = context.getFilesDir().toString() + name;
+        type = t;
+        context = ctx;
     }
 
-
-    public void saveData(Person person) {
-        String data = gson.toJson(person);
-        Log.d("TAG_WRITE", data);
+    public T get(){
+        T ret = null;
+        FileInputStream stream;
         try {
-            PrintWriter writer = new PrintWriter(new FileWriter(file));
-            writer.print(data);
-            writer.close();
-        } catch (IOException e) {
-            Log.e("TAG", "Error in Writing: " + e.getLocalizedMessage());
+            stream = context.openFileInput(file);
+            String str = read(stream);
+            ret = new Gson().fromJson(str, type);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
         }
+        return ret;
     }
 
-    public Person getData() {
+    public void save(T data){
+        FileOutputStream stream;
         try {
-            Scanner scanner = new Scanner(file);
-            String str = "";
-            Person person;
-            while(scanner.hasNext()){
-                str += scanner.next();
+            stream = context.openFileOutput(file, Context.MODE_APPEND);
+            write(stream, data);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            try {
+                stream = context.openFileOutput(file, Context.MODE_PRIVATE);
+                write(stream, data);
+            } catch (Exception err){
+                err.printStackTrace();
             }
-            Log.d("TAG_READ", str);
-            person = gson.fromJson(str, Person.class);
-            return person;
-        } catch (IOException e) {
-            Log.e("TAG", "Error in Reading: " + e.getLocalizedMessage());
-            return null;
         }
+
+    }
+
+    private void write(FileOutputStream stream, T data){
+        PrintWriter writer = new PrintWriter(stream);
+        writer.print(new Gson().toJson(data));
+        writer.flush();
+        writer.close();
+    }
+
+    private String read(FileInputStream stream){
+        String ret = "";
+        try {
+            if (stream != null) {
+                InputStreamReader inputStreamReader = new InputStreamReader(stream);
+                BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+                String receiveString = "";
+                StringBuilder stringBuilder = new StringBuilder();
+
+                while ((receiveString = bufferedReader.readLine()) != null) {
+                    stringBuilder.append(receiveString);
+                }
+
+                stream.close();
+                ret = stringBuilder.toString();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ret;
     }
 }

@@ -23,33 +23,33 @@ import retrofit.Retrofit;
 
 public class MainActivity extends AppCompatActivity {
 
-    Person person;
+    User usr;
     Button button;
     Context context;
     private static final String TAG = "TAG";
+    public static final String BASE_URL = "https://peoplearoundyou.herokuapp.com";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
         button = findViewById(R.id.button);
         context = this.getApplicationContext();
 
-        person = new Person();
+        usr = new User();
 
-        new LoadPerson("read").execute();
+        new LoadPerson("auth").execute();
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent i = new Intent(MainActivity.this, People.class);
-                i.putExtra("person", new Gson().toJson(person));
+                i.putExtra("user", new Gson().toJson(usr));
                 startActivity(i);
             }
         });
     }
 
 
-    class LoadPerson extends AsyncTask<Void, String, Person> {
+    class LoadPerson extends AsyncTask<Void, Void, Void> {
 
         String mode;
 
@@ -58,27 +58,51 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected Person doInBackground(Void... voids) {
-            JSONBaseModule jbm = new JSONBaseModule("User.txt", context);
-            Person per = new Person();
-            if (mode == "write"){
-                jbm.saveData(person);
-            } else if (mode == "read"){
-                per = jbm.getData();
+        protected Void doInBackground(Void... voids) {
+            JSONBaseModule<Person> jbm = new JSONBaseModule<>("User.txt", Person.class, MainActivity.this);
+            switch (mode){
+                case "write":
+                    jbm.save(usr.person);
+                    Log.d("WRITE", "done");
+                    break;
+                case "read":
+                    usr.person = jbm.get();
+                    Log.d("READ", new Gson().toJson(usr));
+                    break;
+                case "auth":
+                    usr.person = jbm.get();
+                    usr.lastCall = (int)(System.currentTimeMillis() / 1000);
+                    Retrofit retrofit = new Retrofit.Builder()
+                            .baseUrl(MainActivity.BASE_URL)
+                            .addConverterFactory(GsonConverterFactory.create())
+                            .build();
+                    RequestSample requestSample = retrofit.create(RequestSample.class);
+                    try {
+                        Log.d("AUTH", new Gson().toJson(usr));
+                        Call<User> call = requestSample.auth(usr);
+                        Response<User> response = call.execute();
+                        usr = response.body();
+                        Log.d("AUTH_DONE", new Gson().toJson(usr));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    break;
             }
-            Log.d(TAG, new Gson().toJson(per));
-            return per;
+            Log.d(TAG, new Gson().toJson(usr));
+            return null;
         }
 
-        public void onPostExecute(Person result){
-            if (mode == "write") {
-                Log.d("TAG", Double.toString(person.latitude));
-                //Temporary. It's just a test
-                new LoadPerson("read").execute();
-                Log.i("Normal", Double.toString(person.latitude));
+        @Override
+        protected void onPostExecute(Void voids){
+            if(usr.person == null){
+                usr.person = new Person();
+                usr.person.nickname = "newcomer";
+                usr.person.longitude = 0;
+                usr.person.status = "";
+                usr.person.latitude = 0;
+                new LoadPerson("auth").execute();
             } else {
-                person = result;
-                Log.i("Normal", Double.toString(person.latitude));
+                setContentView(R.layout.activity_main);
             }
         }
     }

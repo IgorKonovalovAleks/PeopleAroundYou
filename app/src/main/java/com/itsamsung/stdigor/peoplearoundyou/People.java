@@ -29,17 +29,17 @@ import retrofit.Retrofit;
 public class People extends AppCompatActivity {
 
     ArrayList<Person> people;
-    Person person;
+    User usr;
     LinearLayout wall;
     TextView progress;
-    Handler handler;
+    Handler handler, backGroundHandler;
     Button load;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_people);
-        person = new Gson().fromJson(getIntent().getStringExtra("person"), Person.class);
+        usr = new Gson().fromJson(getIntent().getStringExtra("user"), User.class);
         wall = findViewById(R.id.wall);
         load = findViewById(R.id.button2);
         progress = findViewById(R.id.progress);
@@ -61,6 +61,8 @@ public class People extends AppCompatActivity {
                 progress.setText("Loading...");
             }
         });
+        backGroundHandler = new Handler();
+        backGroundHandler.postDelayed((Runnable) new Remind(), 2000);
     }
 
     private void initPersonList(){
@@ -85,13 +87,13 @@ public class People extends AppCompatActivity {
         @Override
         protected ArrayList<Person> doInBackground(Void... voids) {
             Retrofit retrofit = new Retrofit.Builder()
-                    .baseUrl("https://frozen-badlands-67545.herokuapp.com")
+                    .baseUrl(MainActivity.BASE_URL)
                     .addConverterFactory(GsonConverterFactory.create())
                     .build();
             RequestSample requestSample = retrofit.create(RequestSample.class);
             try {
-                Log.d("REQUEST", new Gson().toJson(person));
-                Call<ArrayList<Person>> call = requestSample.lookForPeople(person);
+                Log.d("REQUEST", new Gson().toJson(usr));
+                Call<ArrayList<Person>> call = requestSample.lookForPeople(usr);
                 Response<ArrayList<Person>> response = call.execute();
                 return response.body();
             } catch (Exception e) {
@@ -107,6 +109,37 @@ public class People extends AppCompatActivity {
             } else {
                 progress.setText("Error");
             }
+        }
+    }
+
+    class Remind extends AsyncTask<Void, Void, Void>{
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            Retrofit retrofit = new Retrofit.Builder()
+                    .baseUrl(MainActivity.BASE_URL)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build();
+            RequestSample requestSample = retrofit.create(RequestSample.class);
+            try{
+                Log.d("REMIND", new Gson().toJson(usr));
+                Call<Integer> call = requestSample.remind(usr.id);
+                Response<Integer> r = call.execute();
+                usr.lastCall =  r.body();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            try {
+                Thread.sleep(20000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void v){
+            new Remind().execute();
         }
     }
 
@@ -130,8 +163,8 @@ public class People extends AppCompatActivity {
         private LocationListener listener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                person.latitude = location.getLatitude();
-                person.longitude = location.getLongitude();
+                usr.person.latitude = location.getLatitude();
+                usr.person.longitude = location.getLongitude();
             }
 
             @Override

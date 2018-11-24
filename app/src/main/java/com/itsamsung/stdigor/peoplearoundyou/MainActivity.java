@@ -34,18 +34,16 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         button = findViewById(R.id.button);
         context = this.getApplicationContext();
-
         usr = new User();
-
         new LoadPerson("auth").execute();
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(MainActivity.this, People.class);
-                i.putExtra("user", new Gson().toJson(usr));
-                startActivity(i);
-            }
-        });
+        setContentView(R.layout.activity_main);
+    }
+
+
+    public void click(View view){
+        Intent i = new Intent(MainActivity.this, People.class);
+        i.putExtra("user", new Gson().toJson(usr));
+        startActivity(i);
     }
 
 
@@ -71,6 +69,16 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case "auth":
                     usr.person = jbm.get();
+
+                    if(usr.person == null) {
+                        usr.person = new Person();
+                        usr.person.nickname = "newcomer";
+                        usr.person.longitude = 0;
+                        usr.person.status = "Vsyo slozhno" + Long.toString((long) (System.currentTimeMillis() % 10000));
+                        usr.person.latitude = 0;
+                        Log.d(TAG, "config file not found, using default settings");
+                    }
+
                     usr.lastCall = (int)(System.currentTimeMillis() / 1000);
                     Retrofit retrofit = new Retrofit.Builder()
                             .baseUrl(MainActivity.BASE_URL)
@@ -90,20 +98,6 @@ public class MainActivity extends AppCompatActivity {
             }
             Log.d(TAG, new Gson().toJson(usr));
             return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void voids){
-            if(usr.person == null){
-                usr.person = new Person();
-                usr.person.nickname = "newcomer";
-                usr.person.longitude = 0;
-                usr.person.status = "";
-                usr.person.latitude = 0;
-                new LoadPerson("auth").execute();
-            } else {
-                setContentView(R.layout.activity_main);
-            }
         }
     }
 }

@@ -25,7 +25,7 @@ public final class JSONBaseModule<T> {
     Context context;
 
     public JSONBaseModule(String name, Type t, Context ctx){
-        file = context.getFilesDir().toString() + name;
+        file = name;
         type = t;
         context = ctx;
     }

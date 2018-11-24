@@ -32,7 +32,7 @@ public class People extends AppCompatActivity {
     User usr;
     LinearLayout wall;
     TextView progress;
-    Handler handler, backGroundHandler;
+    Handler handler;
     Button load;
 
     @Override
@@ -43,7 +43,7 @@ public class People extends AppCompatActivity {
         wall = findViewById(R.id.wall);
         load = findViewById(R.id.button2);
         progress = findViewById(R.id.progress);
-        BackGround backGround = new BackGround();
+        BackGroundLocationListener backGround = new BackGroundLocationListener();
         backGround.start();
         handler = new Handler() {
             @Override
@@ -61,8 +61,7 @@ public class People extends AppCompatActivity {
                 progress.setText("Loading...");
             }
         });
-        backGroundHandler = new Handler();
-        backGroundHandler.postDelayed((Runnable) new Remind(), 2000);
+        new Remind().execute();
     }
 
     private void initPersonList(){
@@ -102,7 +101,7 @@ public class People extends AppCompatActivity {
             return null;
         }
 
-        public void onPostExecute(ArrayList<Person> personList){
+        protected void onPostExecute(ArrayList<Person> personList){
             if(personList != null) {
                 people = personList;
                 handler.sendEmptyMessage(1);
@@ -116,6 +115,11 @@ public class People extends AppCompatActivity {
 
         @Override
         protected Void doInBackground(Void... voids) {
+            try {
+                Thread.sleep(20000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             Retrofit retrofit = new Retrofit.Builder()
                     .baseUrl(MainActivity.BASE_URL)
                     .addConverterFactory(GsonConverterFactory.create())
@@ -143,11 +147,11 @@ public class People extends AppCompatActivity {
         }
     }
 
-    class BackGround extends Thread {
+    class BackGroundLocationListener extends Thread {
 
         private LocationManager manager;
 
-        public BackGround(){
+        public BackGroundLocationListener(){
             manager = (LocationManager) getSystemService(LOCATION_SERVICE);
             try {
                 manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, listener);
@@ -157,8 +161,7 @@ public class People extends AppCompatActivity {
         }
 
         @Override
-        public void run(){
-        }
+        public void run(){}
 
         private LocationListener listener = new LocationListener() {
             @Override

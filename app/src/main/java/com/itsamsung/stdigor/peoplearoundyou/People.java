@@ -34,11 +34,12 @@ public class People extends AppCompatActivity {
     TextView progress;
     Handler handler;
     Button load;
+    boolean ready;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_people);
+        ready = false;
         usr = new Gson().fromJson(getIntent().getStringExtra("user"), User.class);
         wall = findViewById(R.id.wall);
         load = findViewById(R.id.button2);
@@ -49,8 +50,12 @@ public class People extends AppCompatActivity {
             @Override
             public void handleMessage(Message msg){
                 super.handleMessage(msg);
+                Log.d("HANDLER", "handled");
                 initPersonList();
-                progress.setText("Done!");
+                if (!ready) {
+                    setContentView(R.layout.activity_people);
+                    ready = true;
+                }
             }
         };
         load.setOnClickListener(new View.OnClickListener() {
@@ -65,7 +70,7 @@ public class People extends AppCompatActivity {
     }
 
     private void initPersonList(){
-        Log.d("DEBUG", "PERSON LIST");
+        Log.d("DEBUG", "PERSON LIST INITIALIZING...");
         Person pers;
         PersonView make;
         for(int i = 0; i < people.size(); i++){
@@ -78,6 +83,7 @@ public class People extends AppCompatActivity {
             make.setLayoutParams(new LinearLayout.LayoutParams((int)(size.x * 0.95), 150));
             wall.addView(make);
         }
+        Log.d("DEBUG", "DONE!");
         progress.setText("Done!");
     }
 
@@ -85,15 +91,17 @@ public class People extends AppCompatActivity {
 
         @Override
         protected ArrayList<Person> doInBackground(Void... voids) {
+            Log.d("LOAD_PEOPLE", "Start...");
             Retrofit retrofit = new Retrofit.Builder()
                     .baseUrl(MainActivity.BASE_URL)
                     .addConverterFactory(GsonConverterFactory.create())
                     .build();
             RequestSample requestSample = retrofit.create(RequestSample.class);
             try {
-                Log.d("REQUEST", new Gson().toJson(usr));
+                Log.d("REQUEST_LOAD_PEOPLE", new Gson().toJson(usr));
                 Call<ArrayList<Person>> call = requestSample.lookForPeople(usr);
                 Response<ArrayList<Person>> response = call.execute();
+                Log.d("LOAD_PEOPLE", new Gson().toJson(response.body()));
                 return response.body();
             } catch (Exception e) {
                 e.printStackTrace();

@@ -28,15 +28,16 @@ public class MainActivity extends AppCompatActivity {
     Context context;
     private static final String TAG = "TAG";
     public static final String BASE_URL = "https://peoplearoundyou.herokuapp.com";
+    boolean ready;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ready = false;
         button = findViewById(R.id.button);
         context = this.getApplicationContext();
         usr = new User();
         new LoadPerson("auth").execute();
-        setContentView(R.layout.activity_main);
     }
 
 
@@ -97,7 +98,12 @@ public class MainActivity extends AppCompatActivity {
                     break;
             }
             Log.d(TAG, new Gson().toJson(usr));
+            ready = true;
             return null;
+        }
+
+        protected void onPostExecute(Void voids){
+            setContentView(R.layout.activity_main);
         }
     }
 }

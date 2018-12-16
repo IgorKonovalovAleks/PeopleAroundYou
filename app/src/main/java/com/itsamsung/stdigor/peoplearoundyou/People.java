@@ -1,6 +1,5 @@
 package com.itsamsung.stdigor.peoplearoundyou;
 
-import android.content.Context;
 import android.graphics.Point;
 import android.location.Location;
 import android.location.LocationListener;
@@ -11,7 +10,6 @@ import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Display;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -19,14 +17,13 @@ import android.widget.TextView;
 
 import com.google.gson.Gson;
 import java.util.ArrayList;
-import java.util.Random;
 
 import retrofit.Call;
 import retrofit.GsonConverterFactory;
 import retrofit.Response;
 import retrofit.Retrofit;
 
-public class People extends AppCompatActivity {
+public class People extends AppCompatActivity implements LocationListenerActivity {
 
     ArrayList<Person> people;
     User usr;
@@ -36,7 +33,8 @@ public class People extends AppCompatActivity {
     Handler handler;
     boolean ready;
     boolean awaiting;
-    BackGroundLocationListener backGround;
+    BackGroundLocationListener listener;
+    LocationManager manager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,13 +53,19 @@ public class People extends AppCompatActivity {
                 onPeopleLoaded();
             }
         };
-        backGround = new BackGroundLocationListener();
-        backGround.start();
+        listener = new BackGroundLocationListener(this);
+        manager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        try {
+            manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, listener);
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        }
         new Remind().execute();
     }
 
+    //Lifecycle methods
     public void onLoadButtonClicked(View v){
-        if (backGround.able) {
+        if (listener.able) {
             awaiting = false;
             wall.removeAllViews();
             new LoadPeople().execute();
@@ -98,6 +102,36 @@ public class People extends AppCompatActivity {
         progress.setText("Done!");
     }
 
+    //Interface methods
+    @Override
+    public void locationChanged(Location location) {
+        Log.d("LOCATION_LISTENER", "location changed " + Double.toString(location.getLatitude()) + " " + Double.toString(location.getLongitude()));
+        usr.person.latitude = location.getLatitude();
+        usr.person.longitude = location.getLongitude();
+    }
+
+    @Override
+    public void providerDisabled(String provider) {
+        progress.setText("Switct on your GPS");
+    }
+
+    @Override
+    public void providerEnabled(String provider) {
+        listener = new BackGroundLocationListener(this);
+        manager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        try {
+            manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, listener);
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        }
+        progress.setText("Your GPS in unable");
+        if (awaiting) {
+            awaiting = false;
+            onLoadButtonClicked(load);
+        }
+    }
+
+    //Requests to server
     class LoadPeople extends AsyncTask<Void, Void, ArrayList<Person>>{
 
         @Override
@@ -130,6 +164,7 @@ public class People extends AppCompatActivity {
         }
     }
 
+    //Does queries per 20 seconds
     class Remind extends AsyncTask<Void, Void, Void>{
 
         @Override
@@ -165,67 +200,4 @@ public class People extends AppCompatActivity {
             new Remind().execute();
         }
     }
-
-    class BackGroundLocationListener extends Thread {
-
-        boolean able;
-        private LocationManager manager;
-
-        public BackGroundLocationListener() {
-            Log.d("BACKGROUND", "Stared");
-            able = false;
-            manager = (LocationManager) getSystemService(LOCATION_SERVICE);
-            try {
-                manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, listener);
-            } catch (SecurityException e) {
-                e.printStackTrace();
-            }
-            able = true;
-        }
-
-        @Override
-        public void run(){}
-
-        private LocationListener listener = new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-                Log.d("LOCATION_LISTENER", "location changed");
-                able = true;
-                if (awaiting) {
-                    Log.d("LOCATION_LISTENER", "sending msg...");
-                    handler.sendEmptyMessage(1);
-                }
-                usr.person.latitude = location.getLatitude();
-                usr.person.longitude = location.getLongitude();
-            }
-
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-
-            }
-
-            @Override
-            public void onProviderEnabled(String provider) {
-                able = true;
-                if (awaiting) {
-                    handler.sendEmptyMessage(1);
-                }
-                progress.setText("GPS provider enabled");
-                manager = (LocationManager) getSystemService(LOCATION_SERVICE);
-                try {
-                    manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5, listener);
-                } catch (SecurityException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            @Override
-            public void onProviderDisabled(String provider) {
-                able = false;
-                progress.setText("GPS provider is unable");
-            }
-        };
-    }
-
-
 }

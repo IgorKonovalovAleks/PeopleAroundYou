@@ -13,9 +13,11 @@
         android:layout_marginStart="101dp"
         android:layout_marginTop="280dp"
         android:layout_marginEnd="106dp"
+        android:layout_marginBottom="192dp"
         android:background="@android:color/holo_purple"
         android:onClick="click"
         android:text="I'm borred"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
@@ -41,10 +43,10 @@
         android:id="@+id/StatusEdit"
         android:layout_width="wrap_content"
         android:layout_height="116dp"
-        android:layout_marginStart="82dp"
-        android:layout_marginTop="20dp"
-        android:layout_marginEnd="87dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginStart="85dp"
+        android:layout_marginTop="15dp"
+        android:layout_marginEnd="84dp"
+        android:layout_marginBottom="12dp"
         android:ems="10"
         android:hint="Status"
         android:inputType="textMultiLine"
@@ -52,5 +54,18 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/NameEdit" />
+
+    <TextView
+        android:id="@+id/StatusView"
+        android:layout_width="wrap_content"
+        android:layout_height="20dp"
+        android:layout_marginStart="162dp"
+        android:layout_marginTop="28dp"
+        android:layout_marginEnd="164dp"
+        android:layout_marginBottom="144dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/button" />
 
 </android.support.constraint.ConstraintLayout>

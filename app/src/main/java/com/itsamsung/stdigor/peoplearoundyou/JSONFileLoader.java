@@ -18,13 +18,13 @@ import java.io.PrintWriter;
 import java.lang.reflect.Type;
 import java.util.Scanner;
 
-public final class JSONBaseModule<T> {
+public final class JSONFileLoader<T> {
 
     String file;
     Type type;
     Context context;
 
-    public JSONBaseModule(String name, Type t, Context ctx){
+    public JSONFileLoader(String name, Type t, Context ctx){
         file = name;
         type = t;
         context = ctx;
@@ -36,6 +36,7 @@ public final class JSONBaseModule<T> {
         try {
             stream = context.openFileInput(file);
             String str = read(stream);
+            Log.d("JFL_GET", new Gson().toJson(str));
             ret = new Gson().fromJson(str, type);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -46,18 +47,12 @@ public final class JSONBaseModule<T> {
     public void save(T data){
         FileOutputStream stream;
         try {
-            stream = context.openFileOutput(file, Context.MODE_APPEND);
+            stream = context.openFileOutput(file, Context.MODE_PRIVATE);
             write(stream, data);
-        } catch (FileNotFoundException e) {
+            stream.close();
+        } catch (IOException e) {
             e.printStackTrace();
-            try {
-                stream = context.openFileOutput(file, Context.MODE_PRIVATE);
-                write(stream, data);
-            } catch (Exception err){
-                err.printStackTrace();
-            }
         }
-
     }
 
     private void write(FileOutputStream stream, T data){
@@ -73,7 +68,7 @@ public final class JSONBaseModule<T> {
             if (stream != null) {
                 InputStreamReader inputStreamReader = new InputStreamReader(stream);
                 BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-                String receiveString = "";
+                String receiveString;
                 StringBuilder stringBuilder = new StringBuilder();
 
                 while ((receiveString = bufferedReader.readLine()) != null) {

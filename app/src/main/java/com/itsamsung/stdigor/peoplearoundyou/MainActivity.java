@@ -2,20 +2,16 @@ package com.itsamsung.stdigor.peoplearoundyou;
 
 import android.content.Context;
 import android.content.Intent;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.TextView;
+import android.widget.EditText;
 
 import com.google.gson.Gson;
 
-import java.util.ArrayList;
 import retrofit.Call;
 import retrofit.GsonConverterFactory;
 import retrofit.Response;
@@ -26,84 +22,126 @@ public class MainActivity extends AppCompatActivity {
     User usr;
     Button button;
     Context context;
+    EditText nameEdit, statusEdit;
     private static final String TAG = "TAG";
     public static final String BASE_URL = "https://peoplearoundyou.herokuapp.com";
     boolean ready;
+    boolean onSavingAwaiting;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
         ready = false;
+        onSavingAwaiting = false;
+        nameEdit = findViewById(R.id.NameEdit);
+        statusEdit = findViewById(R.id.StatusEdit);
         button = findViewById(R.id.button);
         context = this.getApplicationContext();
-        usr = new User();
-        new LoadPerson("auth").execute();
+        new LoadPerson().execute();
     }
-
 
     public void click(View view){
-        Intent i = new Intent(MainActivity.this, People.class);
-        i.putExtra("user", new Gson().toJson(usr));
-        startActivity(i);
+        usr.person.nickname = nameEdit.getText().toString();
+        usr.person.status = statusEdit.getText().toString();
+        usr.lastCall = (int)(System.currentTimeMillis() / 1000);
+        new Auth().execute();
+        new SavePerson().execute();
     }
 
-
-    class LoadPerson extends AsyncTask<Void, Void, Void> {
-
-        String mode;
-
-        public LoadPerson(String mode){
-            this.mode = mode;
+    public void onAuthenticated(){
+        if (ready) {
+            Intent i = new Intent(MainActivity.this, People.class);
+            i.putExtra("user", new Gson().toJson(usr));
+            startActivity(i);
+        } else {
+            onSavingAwaiting = true;
         }
+    }
+
+    public void onSaved(){
+        ready = true;
+        if (onSavingAwaiting) {
+            onSavingAwaiting = false;
+            onAuthenticated();
+        }
+    }
+
+    public void onLoaded(Person per){
+        if (per != null) {
+            usr = new User();
+            usr.person = per;
+            nameEdit.setText(per.nickname);
+            statusEdit.setText(per.status);
+            Log.d("LOAD_PERSON", new Gson().toJson(usr));
+        } else {
+            Log.d("LOAD_PERSON", "using default settings");
+            setDefault();
+        }
+    }
+
+    private void setDefault(){
+        nameEdit.setText("default user");
+        statusEdit.setText("I'm a newcomer");
+        usr = new User();
+        usr.person = new Person();
+        usr.person.nickname = "default user";
+        usr.person.status = "I'm a newcomer";
+        usr.person.latitude = 0;
+        usr.person.longitude = 0;
+    }
+
+    class SavePerson extends AsyncTask<Void, Void, Void> {
 
         @Override
         protected Void doInBackground(Void... voids) {
-            JSONBaseModule<Person> jbm = new JSONBaseModule<>("User.txt", Person.class, MainActivity.this);
-            switch (mode){
-                case "write":
-                    jbm.save(usr.person);
-                    Log.d("WRITE", "done");
-                    break;
-                case "read":
-                    usr.person = jbm.get();
-                    Log.d("READ", new Gson().toJson(usr));
-                    break;
-                case "auth":
-                    usr.person = jbm.get();
-
-                    if(usr.person == null) {
-                        usr.person = new Person();
-                        usr.person.nickname = "newcomer";
-                        usr.person.longitude = 0;
-                        usr.person.status = "Vsyo slozhno" + Long.toString((long) (System.currentTimeMillis() % 10000));
-                        usr.person.latitude = 0;
-                        Log.d(TAG, "config file not found, using default settings");
-                    }
-
-                    usr.lastCall = (int)(System.currentTimeMillis() / 1000);
-                    Retrofit retrofit = new Retrofit.Builder()
-                            .baseUrl(MainActivity.BASE_URL)
-                            .addConverterFactory(GsonConverterFactory.create())
-                            .build();
-                    RequestSample requestSample = retrofit.create(RequestSample.class);
-                    try {
-                        Log.d("AUTH", new Gson().toJson(usr));
-                        Call<User> call = requestSample.auth(usr);
-                        Response<User> response = call.execute();
-                        usr = response.body();
-                        Log.d("AUTH_DONE", new Gson().toJson(usr));
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    break;
-            }
-            Log.d(TAG, new Gson().toJson(usr));
-            ready = true;
+            JSONFileLoader<Person> jfl = new JSONFileLoader<>("User.txt", Person.class, MainActivity.this);
+            jfl.save(usr.person);
             return null;
         }
 
-        protected void onPostExecute(Void voids){
-            setContentView(R.layout.activity_main);
+        protected void onPostExecute(Void v){
+            onSaved();
+        }
+    }
+
+    class Auth extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            Retrofit retrofit = new Retrofit.Builder()
+                    .baseUrl(MainActivity.BASE_URL)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build();
+            RequestSample requestSample = retrofit.create(RequestSample.class);
+            try {
+                Log.d("AUTH", new Gson().toJson(usr));
+                Call<User> call = requestSample.auth(usr);
+                Response<User> response = call.execute();
+                usr = response.body();
+                Log.d("AUTH_DONE", new Gson().toJson(usr));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        protected void onPostExecute(Void v){
+            onAuthenticated();
+        }
+    }
+
+    class LoadPerson extends AsyncTask<Void, Void, Person> {
+
+        @Override
+        protected Person doInBackground(Void... voids) {
+            JSONFileLoader<Person> jfl = new JSONFileLoader<>("User.txt", Person.class, MainActivity.this);
+            Log.d("LOAD_PERSON_START", new Gson().toJson(usr));
+            return jfl.get();
+        }
+
+        protected void onPostExecute(Person per){
+            onLoaded(per);
         }
     }
 }

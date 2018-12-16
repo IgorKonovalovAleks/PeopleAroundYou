@@ -32,41 +32,52 @@ public class People extends AppCompatActivity {
     User usr;
     LinearLayout wall;
     TextView progress;
-    Handler handler;
     Button load;
+    Handler handler;
     boolean ready;
+    boolean awaiting;
+    BackGroundLocationListener backGround;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_people);
         ready = false;
+        awaiting = false;
         usr = new Gson().fromJson(getIntent().getStringExtra("user"), User.class);
         wall = findViewById(R.id.wall);
         load = findViewById(R.id.button2);
         progress = findViewById(R.id.progress);
-        BackGroundLocationListener backGround = new BackGroundLocationListener();
-        backGround.start();
-        handler = new Handler() {
+        handler = new Handler(){
             @Override
             public void handleMessage(Message msg){
                 super.handleMessage(msg);
-                Log.d("HANDLER", "handled");
-                initPersonList();
-                if (!ready) {
-                    setContentView(R.layout.activity_people);
-                    ready = true;
-                }
+                onPeopleLoaded();
             }
         };
-        load.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                wall.removeAllViews();
-                new LoadPeople().execute();
-                progress.setText("Loading...");
-            }
-        });
+        backGround = new BackGroundLocationListener();
+        backGround.start();
         new Remind().execute();
+    }
+
+    public void onLoadButtonClicked(View v){
+        if (backGround.able) {
+            awaiting = false;
+            wall.removeAllViews();
+            new LoadPeople().execute();
+            progress.setText("Loading...");
+        } else {
+            awaiting = true;
+            Log.d("ON_LOAD_CLICKED", "start awaiting");
+        }
+    }
+
+    public void onPeopleLoaded(){
+        Log.d("HANDLER", "handled");
+        initPersonList();
+        if (!ready) {
+            ready = true;
+        }
     }
 
     private void initPersonList(){
@@ -112,7 +123,7 @@ public class People extends AppCompatActivity {
         protected void onPostExecute(ArrayList<Person> personList){
             if(personList != null) {
                 people = personList;
-                handler.sendEmptyMessage(1);
+                onPeopleLoaded();
             } else {
                 progress.setText("Error");
             }
@@ -157,15 +168,19 @@ public class People extends AppCompatActivity {
 
     class BackGroundLocationListener extends Thread {
 
+        boolean able;
         private LocationManager manager;
 
-        public BackGroundLocationListener(){
+        public BackGroundLocationListener() {
+            Log.d("BACKGROUND", "Stared");
+            able = false;
             manager = (LocationManager) getSystemService(LOCATION_SERVICE);
             try {
                 manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, listener);
             } catch (SecurityException e) {
                 e.printStackTrace();
             }
+            able = true;
         }
 
         @Override
@@ -174,6 +189,12 @@ public class People extends AppCompatActivity {
         private LocationListener listener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
+                Log.d("LOCATION_LISTENER", "location changed");
+                able = true;
+                if (awaiting) {
+                    Log.d("LOCATION_LISTENER", "sending msg...");
+                    handler.sendEmptyMessage(1);
+                }
                 usr.person.latitude = location.getLatitude();
                 usr.person.longitude = location.getLongitude();
             }
@@ -185,6 +206,10 @@ public class People extends AppCompatActivity {
 
             @Override
             public void onProviderEnabled(String provider) {
+                able = true;
+                if (awaiting) {
+                    handler.sendEmptyMessage(1);
+                }
                 progress.setText("GPS provider enabled");
                 manager = (LocationManager) getSystemService(LOCATION_SERVICE);
                 try {
@@ -196,6 +221,7 @@ public class People extends AppCompatActivity {
 
             @Override
             public void onProviderDisabled(String provider) {
+                able = false;
                 progress.setText("GPS provider is unable");
             }
         };

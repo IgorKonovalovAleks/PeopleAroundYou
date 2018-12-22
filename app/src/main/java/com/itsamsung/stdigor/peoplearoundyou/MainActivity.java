@@ -19,6 +19,10 @@ import android.widget.TextView;
 
 import com.google.gson.Gson;
 
+import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.util.concurrent.TimeoutException;
+
 import retrofit.Call;
 import retrofit.GsonConverterFactory;
 import retrofit.Response;
@@ -47,21 +51,33 @@ public class MainActivity extends AppCompatActivity implements LocationListenerA
         statusEdit = findViewById(R.id.StatusEdit);
         button = findViewById(R.id.button);
         context = this.getApplicationContext();
-        new LoadPerson().execute();
+        usr = new User();
+        usr.person = new Person();
         initLocationListening();
+        new LoadPerson().execute();
     }
 
     private void initLocationListening(){
         LM = (LocationManager) getSystemService(LOCATION_SERVICE);
         BGLL = new BackGroundLocationListener(this);
         try {
-            LM.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 5, BGLL);
+            LM.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, BGLL);
+            LM.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, BGLL);
+            Location oldGPS = LM.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            Location oldNet = LM.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            if (oldNet != null){
+                usr.person.latitude = oldNet.getLatitude();
+                usr.person.longitude = oldNet.getLongitude();
+            } else if (oldGPS != null) {
+                usr.person.latitude = oldGPS.getLatitude();
+                usr.person.longitude = oldGPS.getLongitude();
+            }
         } catch (SecurityException e) {
             e.printStackTrace();
         }
     }
 
-    //Lifecycle processors
+    //Lifecycle methods
     public void click(View view) {
         if (BGLL.able) {
             usr.person.nickname = nameEdit.getText().toString();
@@ -126,18 +142,14 @@ public class MainActivity extends AppCompatActivity implements LocationListenerA
 
     @Override
     public void providerDisabled(String provider) {
+        Log.d("LOCATION_LISTENER", "provider disabled");
         statusView.setText("Your GPS provider is unable");
     }
 
     @Override
     public void providerEnabled(String provider) {
-        LM = (LocationManager) getSystemService(LOCATION_SERVICE);
-        BGLL = new BackGroundLocationListener(this);
-        try {
-            LM.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, BGLL);
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        }
+        Log.d("LOCATION_LISTENER", "provider disabled");
+        initLocationListening();
         statusView.setText("Your GPS provider is able");
     }
 
@@ -164,14 +176,17 @@ public class MainActivity extends AppCompatActivity implements LocationListenerA
                     .addConverterFactory(GsonConverterFactory.create())
                     .build();
             RequestSample requestSample = retrofit.create(RequestSample.class);
-            try {
-                Log.d("AUTH", new Gson().toJson(usr));
-                Call<User> call = requestSample.auth(usr);
-                Response<User> response = call.execute();
-                usr = response.body();
-                Log.d("AUTH_DONE", new Gson().toJson(usr));
-            } catch (Exception e) {
-                e.printStackTrace();
+            while (true) {
+                try {
+                    Log.d("AUTH", new Gson().toJson(usr));
+                    Call<User> call = requestSample.auth(usr);
+                    Response<User> response = call.execute();
+                    usr = response.body();
+                    Log.d("AUTH_DONE", new Gson().toJson(usr));
+                    break;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
             return null;
         }

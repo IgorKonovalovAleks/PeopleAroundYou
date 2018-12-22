@@ -27,12 +27,14 @@ public class BackGroundLocationListener implements LocationListener {
 
     @Override
     public void onProviderEnabled(String provider) {
+        Log.d("BGLL", "provider enabled");
         parent.providerEnabled(provider);
         able = true;
     }
 
     @Override
     public void onProviderDisabled(String provider) {
+        Log.d("BGLL", "provider disabled");
         parent.providerDisabled(provider);
         able = false;
     }

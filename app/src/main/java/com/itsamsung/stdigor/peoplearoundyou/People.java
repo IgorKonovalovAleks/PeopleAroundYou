@@ -53,13 +53,7 @@ public class People extends AppCompatActivity implements LocationListenerActivit
                 onPeopleLoaded();
             }
         };
-        listener = new BackGroundLocationListener(this);
-        manager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        try {
-            manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, listener);
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        }
+        initLocationListenning();
         new Remind().execute();
     }
 
@@ -102,6 +96,22 @@ public class People extends AppCompatActivity implements LocationListenerActivit
         progress.setText("Done!");
     }
 
+    void initLocationListenning(){
+        listener = new BackGroundLocationListener(this);
+        manager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        try {
+            manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, listener);
+            manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, listener);
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        }
+        progress.setText("Your GPS in unable");
+        if (awaiting) {
+            awaiting = false;
+            onLoadButtonClicked(load);
+        }
+    }
+
     //Interface methods
     @Override
     public void locationChanged(Location location) {
@@ -117,18 +127,8 @@ public class People extends AppCompatActivity implements LocationListenerActivit
 
     @Override
     public void providerEnabled(String provider) {
-        listener = new BackGroundLocationListener(this);
-        manager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        try {
-            manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, listener);
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        }
-        progress.setText("Your GPS in unable");
-        if (awaiting) {
-            awaiting = false;
-            onLoadButtonClicked(load);
-        }
+        Log.d("LOCATION_LISTENER", "enabled");
+        initLocationListenning();
     }
 
     //Requests to server

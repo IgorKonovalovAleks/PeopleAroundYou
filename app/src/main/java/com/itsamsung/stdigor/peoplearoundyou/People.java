@@ -15,6 +15,13 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.gson.Gson;
 import java.util.ArrayList;
 
@@ -23,27 +30,30 @@ import retrofit.GsonConverterFactory;
 import retrofit.Response;
 import retrofit.Retrofit;
 
-public class People extends AppCompatActivity implements LocationListenerActivity {
+public class People extends AppCompatActivity implements LocationListenerActivity, OnMapReadyCallback {
 
     ArrayList<Person> people;
     User usr;
     LinearLayout wall;
     TextView progress;
     Button load;
+    GoogleMap gmap;
+    MapView mapView;
     Handler handler;
-    boolean ready;
-    boolean awaiting;
+    boolean ready, awaiting, mapReady, waitingForMap;
     BackGroundLocationListener listener;
     LocationManager manager;
+
+    private static final String MAP_VIEW_BUNDLE_KEY = "MapViewBundleKey";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_people);
-        ready = false;
-        awaiting = false;
+        setContentView(R.layout.activity_people_new);
+        ready = awaiting = mapReady = waitingForMap = false;
         usr = new Gson().fromJson(getIntent().getStringExtra("user"), User.class);
-        wall = findViewById(R.id.wall);
+        //wall = findViewById(R.id.wall); for old version
+        mapView = findViewById(R.id.mapView);
         load = findViewById(R.id.button2);
         progress = findViewById(R.id.progress);
         handler = new Handler(){
@@ -53,7 +63,13 @@ public class People extends AppCompatActivity implements LocationListenerActivit
                 onPeopleLoaded();
             }
         };
-        initLocationListenning();
+        Bundle mapViewBundle = null;
+        if (savedInstanceState != null) {
+            mapViewBundle = savedInstanceState.getBundle(MAP_VIEW_BUNDLE_KEY);
+        }
+        mapView.onCreate(mapViewBundle);
+        mapView.getMapAsync(this);
+        initLocationListening();
         new Remind().execute();
     }
 
@@ -72,10 +88,28 @@ public class People extends AppCompatActivity implements LocationListenerActivit
 
     public void onPeopleLoaded(){
         Log.d("HANDLER", "handled");
-        initPersonList();
-        if (!ready) {
-            ready = true;
+        if (mapReady) {
+            initMapView();
+        } else {
+            waitingForMap = true;
         }
+        ready = true;
+    }
+
+    private void initMapView(){
+        Person make;
+        for (int i = 0; i < people.size(); i++) {
+            make = people.get(i);
+            Log.d("INIT_MAP", new Gson().toJson(make));
+            LatLng coords = new LatLng(make.latitude, make.longitude);
+            gmap.addMarker(new MarkerOptions()
+                    .position(coords)
+                    .title(make.nickname)
+                    .snippet(make.status)
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+        }
+        gmap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(usr.person.latitude, usr.person.longitude)));
+        Log.d("INIT_MAP", "DONE!");
     }
 
     private void initPersonList(){
@@ -84,7 +118,7 @@ public class People extends AppCompatActivity implements LocationListenerActivit
         PersonView make;
         for(int i = 0; i < people.size(); i++){
             pers = people.get(i);
-            Log.d("TAG_FROM_PEOPLE", new Gson().toJson(pers));
+            Log.d("INIT_LIST", new Gson().toJson(pers));
             make = new PersonView(this, pers);
             make.setId(i);
             Point size = new Point();
@@ -92,11 +126,11 @@ public class People extends AppCompatActivity implements LocationListenerActivit
             make.setLayoutParams(new LinearLayout.LayoutParams((int)(size.x * 0.95), 150));
             wall.addView(make);
         }
-        Log.d("DEBUG", "DONE!");
+        Log.d("INIT_LIST", "DONE!");
         progress.setText("Done!");
     }
 
-    void initLocationListenning(){
+    void initLocationListening(){
         listener = new BackGroundLocationListener(this);
         manager = (LocationManager) getSystemService(LOCATION_SERVICE);
         try {
@@ -112,7 +146,7 @@ public class People extends AppCompatActivity implements LocationListenerActivit
         }
     }
 
-    //Interface methods
+    //Implemented methods
     @Override
     public void locationChanged(Location location) {
         Log.d("LOCATION_LISTENER", "location changed " + Double.toString(location.getLatitude()) + " " + Double.toString(location.getLongitude()));
@@ -128,7 +162,51 @@ public class People extends AppCompatActivity implements LocationListenerActivit
     @Override
     public void providerEnabled(String provider) {
         Log.d("LOCATION_LISTENER", "enabled");
-        initLocationListenning();
+        initLocationListening();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mapView.onResume();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        mapView.onStart();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mapView.onStop();
+    }
+    @Override
+    protected void onPause() {
+        mapView.onPause();
+        super.onPause();
+    }
+    @Override
+    protected void onDestroy() {
+        mapView.onDestroy();
+        super.onDestroy();
+    }
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        mapView.onLowMemory();
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        Log.d("MAP_INIT", "map is ready");
+        gmap = googleMap;
+        mapReady =true;
+        if (waitingForMap) {
+            waitingForMap = false;
+            initMapView();
+        }
     }
 
     //Requests to server
